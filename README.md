@@ -16,9 +16,10 @@ kernel of the logical partitions so it can map them to block devices in
 
 In true Google fashion, however, Android dynamic partitions use a totally custom
 header format that is not compatible with LVM or other similar software. As
-such, the only official tools that exist to parse and mount them are part of
-Android and depend heavily on Android's frameworks, volume manager, and init
-system.
+such, the only official tools that exist to mount them are part of Android and
+depend heavily on Android's frameworks, volume manager, and init system. (There
+are [official tools][3] that run on Linux to pack and unpack `super.img` files,
+but they cannot mount them in-place.)
 
 This tool makes it possible to mount `super.img` files with a standard Linux
 userspace. It uses a modified version of Google's AOSP code to parse the
@@ -28,6 +29,7 @@ a Device Mapper block device for each logical partition in the image.
 
 [1]: https://source.android.com/devices/tech/ota/dynamic_partitions
 [2]: https://www.kernel.org/doc/html/latest/admin-guide/device-mapper/linear.html
+[3]: https://android.googlesource.com/platform/system/extras/+/master/partition_tools/
 
 Dependencies
 ============
