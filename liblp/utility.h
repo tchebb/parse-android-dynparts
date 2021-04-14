@@ -24,15 +24,16 @@
 #include <cassert>
 #include <iostream>
 #include <limits>
+#include <sstream>
 #include <string>
 #include <string_view>
 
 #include <liblp/liblp.h>
 
 #define LP_TAG "[liblp]"
-#define LWARN std::cerr << "[W]" << LP_TAG
-#define LINFO std::cerr << "[I]" << LP_TAG
-#define LERROR std::cerr << "[E]" << LP_TAG
+#define LWARN NewlineLogger(std::cerr).stream << "[W]" << LP_TAG
+#define LINFO NewlineLogger(std::cerr).stream << "[I]" << LP_TAG
+#define LERROR NewlineLogger(std::cerr).stream << "[E]" << LP_TAG
 #define PWARNING LWARN
 #define PERROR LERROR
 
@@ -99,6 +100,19 @@ bool SetBlockReadonly(int fd, bool readonly);
 void SetMetadataHeaderV0(LpMetadata* metadata);
 
 bool ReadFully(int fd, void* data, size_t byte_count);
+
+class NewlineLogger {
+  public:
+    NewlineLogger(std::ostream& sink) : sink_(sink) {}
+    ~NewlineLogger() {
+        sink_ << stream.str() << std::endl;
+    }
+
+    std::ostringstream stream;
+
+  private:
+    std::ostream& sink_;
+};
 
 }  // namespace fs_mgr
 }  // namespace android
