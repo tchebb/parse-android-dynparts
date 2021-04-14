@@ -68,7 +68,7 @@ Setup
  2. Make your `super.img` available as a loop device (omit `-r` if you want to
     allow writes):
     ```
-    losetup -Pr /dev/loop0 super.img
+    losetup -r /dev/loop0 super.img
     ```
  3. Create mappings for the dynamic partitions:
     ```
