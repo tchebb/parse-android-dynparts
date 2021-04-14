@@ -72,7 +72,7 @@ Setup
     ```
  3. Create mappings for the dynamic partitions:
     ```
-    dmsetup create --concise "$(parse-dynparts /dev/loop0)"
+    dmsetup create --concise "$(parse-android-dynparts /dev/loop0)"
     ```
  4. Access your partitions as `/dev/mapper/dynpart-<NAME>`!
 
