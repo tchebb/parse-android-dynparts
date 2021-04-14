@@ -2,40 +2,85 @@ Purpose
 =======
 Most devices running Android 10 and higher use Android's [Dynamic Partitions][1]
 feature to allow the different read-only system partitions (e.g. `system`,
-`vendor`, and `product`) to share the same pool of storage space. This allows
-vendors to resize these partitions freely over a device's lifecycle, as long as
-the sum of their sizes doesn't exceed that of the physical partition they all
-reside in.
+`vendor`, `product`) to share the same pool of storage space. This allows
+vendors to safely resize those partitions in OTA updates, as long as the sum of
+their sizes doesn't exceed that of the physical partition they all reside in.
 
 The physical partition image that holds multiple Android dynamic partitions is
-conventionally named `super.img`, and it holds similar information as an LVM
-physical volume does on Linux. Like LVM, the Android userspace makes use of
-[Device Mapper][2] to expose each logical partition on its own block device in
+conventionally named `super.img` and holds similar information as an LVM
+physical volume on Linux: a list of logical partitions, each associated with a
+(possibly non-contiguous) set of blocks in the file that comprise it. Like LVM,
+Android makes use of [Device Mapper's dm-linear target][2] to inform the
+kernel of the logical partitions so it can map them to block devices in
 `/dev/mapper`.
 
 In true Google fashion, however, Android dynamic partitions use a totally custom
 header format that is not compatible with LVM or other similar software. As
-such, the only official tools that exist to parse and mount super.img files are
-part of Android and depend heavily on Android's frameworks, volume manager, and
-init system.
+such, the only official tools that exist to parse and mount them are part of
+Android and depend heavily on Android's frameworks, volume manager, and init
+system.
 
-This tool makes it possible to mount Android `super.img` files with a standard
-Linux userspace by using a modified version of Google's parsing code to extract
-the partition layout from a `super.img` file and converting that layout to a
-"concise device specification" that can be read by the existing `dmsetup` tool
-and used to instruct Device Mapper to create the appropriate mappings.
+This tool makes it possible to mount `super.img` files with a standard Linux
+userspace. It uses a modified version of Google's AOSP code to parse the
+partition layout, then outputs that layout as a textual "concise device
+specification" which, when passed to `dmsetup`, instructs the kernel to create
+a Device Mapper block device for each logical partition in the image.
 
 [1]: https://source.android.com/devices/tech/ota/dynamic_partitions
-[2]: https://www.kernel.org/doc/html/latest/admin-guide/device-mapper/index.html
+[2]: https://www.kernel.org/doc/html/latest/admin-guide/device-mapper/linear.html
+
+Dependencies
+============
+ - CMake
+ - OpenSSL (for hash functions)
+
+Building
+========
+This is a standard C++ CMake project; it builds like any other CMake project.
+For those unfamiliar with CMake, here's the incantation you need to build using
+[Ninja](https://ninja-build.org/) as a backend:
+```
+mkdir build
+cd build
+cmake -G Ninja ..
+ninja
+```
+
+Or, if you don't have Ninja, you can use the Makefile backend:
+```
+mkdir build
+cd build
+cmake ..
+make
+```
 
 Usage
 =====
- 1. Make your `super.img` available as a loop device:
+
+Setup
+-----
+ 1. Obtain a raw `super.img`. Depending on the source of the image you're
+    working with, this may initially be a sparse image, which you'll have to
+    unsparse using the standard Android `simg2img` tool, or it may be one
+    partition inside a GPT-partitioned disk image.
+ 2. Make your `super.img` available as a loop device (omit `-r` if you want to
+    allow writes):
     ```
     losetup -Pr /dev/loop0 system.img
     ```
- 2. Create mappings for the dynamic partitions:
+ 3. Create mappings for the dynamic partitions:
     ```
-    dmsetup create --concise "$(parse-dynparts/build/parse-dynparts /dev/loop0p2)"
+    dmsetup create --concise "$(parse-dynparts /dev/loop0)"
     ```
- 3. Access your partitions as `/dev/mapper/dynpart-NAME`!
+ 4. Access your partitions as `/dev/mapper/dynpart-<NAME>`!
+
+Teardown
+--------
+ 1. Unmap the Device Mapper devices:
+    ```
+    dmsetup remove /dev/mapper/dynpart-*
+    ```
+ 2. Delete the loop device:
+    ```
+    losetup -d /dev/loop0
+    ```
